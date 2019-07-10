@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 import com.zer0bee.annotations.BindView;
+import com.zer0bee.annotations.OnClick;
 import com.zer0bee.binder.Binding;
 
 public class MainActivity extends AppCompatActivity {
@@ -18,10 +19,10 @@ public class MainActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
     Binding.bind(this);
-    button.setOnClickListener(new View.OnClickListener() {
-      @Override public void onClick(View v) {
-        Toast.makeText(MainActivity.this, "Hello World!!", Toast.LENGTH_SHORT).show();
-      }
-    });
+  }
+
+  @OnClick(R.id.btHello)
+  void btClick(View v) {
+    Toast.makeText(v.getContext(), "Hello World!!", Toast.LENGTH_SHORT).show();
   }
 }

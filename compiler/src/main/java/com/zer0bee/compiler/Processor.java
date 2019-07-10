@@ -5,6 +5,7 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import com.zer0bee.annotations.BindView;
+import com.zer0bee.annotations.OnClick;
 import com.zer0bee.compiler.utils.ProcessingUtils;
 import java.io.IOException;
 import java.util.Arrays;
@@ -15,6 +16,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -73,6 +75,9 @@ public class Processor extends AbstractProcessor {
             .addStatement("$N($N)",
                 NameStore.Method.BIND_VIEWS,
                 NameStore.Variable.ANDROID_ACTIVITY)
+            .addStatement("$N($N)",
+                NameStore.Method.BIND_ON_CLICKS,
+                NameStore.Variable.ANDROID_ACTIVITY)
             .build());
 
         // add method that maps the views with id
@@ -97,6 +102,45 @@ public class Processor extends AbstractProcessor {
 
         classBuilder.addMethod(bindViewsMethodBuilder.build());
 
+        // add method that attaches the onClickListeners
+        ClassName androidOnClickListenerClassName = ClassName.get(
+            NameStore.Package.ANDROID_VIEW,
+            NameStore.Class.ANDROID_VIEW,
+            NameStore.Class.ANDROID_VIEW_ON_CLICK_LISTENER);
+
+        ClassName androidViewClassName = ClassName.get(
+            NameStore.Package.ANDROID_VIEW,
+            NameStore.Class.ANDROID_VIEW);
+
+        MethodSpec.Builder bindOnClicksMethodBuilder = MethodSpec
+            .methodBuilder(NameStore.Method.BIND_ON_CLICKS)
+            .addModifiers(Modifier.PRIVATE)
+            .returns(void.class)
+            .addParameter(className, NameStore.Variable.ANDROID_ACTIVITY, Modifier.FINAL);
+
+        for (ExecutableElement executableElement : ElementFilter.methodsIn(
+            typeElement.getEnclosedElements())) {
+          OnClick onClick = executableElement.getAnnotation(OnClick.class);
+          if (onClick != null) {
+            TypeSpec OnClickListenerClass = TypeSpec.anonymousClassBuilder("")
+                .addSuperinterface(androidOnClickListenerClassName)
+                .addMethod(MethodSpec.methodBuilder(NameStore.Method.ANDROID_VIEW_ON_CLICK)
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(androidViewClassName, NameStore.Variable.ANDROID_VIEW)
+                    .addStatement("$N.$N($N)",
+                        NameStore.Variable.ANDROID_ACTIVITY,
+                        executableElement.getSimpleName(),
+                        NameStore.Variable.ANDROID_VIEW)
+                    .returns(void.class)
+                    .build())
+                .build();
+            bindOnClicksMethodBuilder.addStatement("$N.findViewById($L).setOnClickListener($L)",
+                NameStore.Variable.ANDROID_ACTIVITY,
+                onClick.value(),
+                OnClickListenerClass);
+          }
+        }
+        classBuilder.addMethod(bindOnClicksMethodBuilder.build());
         // write the defines class to a java file
         //It will generate the source code in the folder. /app/build/generated/source/apt/debug
         try {
@@ -114,7 +158,8 @@ public class Processor extends AbstractProcessor {
 
   @Override public Set<String> getSupportedAnnotationTypes() {
     return new TreeSet<>(Arrays.asList(
-        BindView.class.getCanonicalName()
+        BindView.class.getCanonicalName(),
+        OnClick.class.getCanonicalName()
     ));
   }
 }
