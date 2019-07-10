@@ -25,8 +25,17 @@ public class Processor extends AbstractProcessor {
     elementUtils = processingEnvironment.getElementUtils();
   }
 
+  /**
+   * @param annotations It provides a list of annotations as elements that are contained in the Java file
+   * being processed.
+   * @param roundEnvironment It provides access to the processing environment with utils to querying
+   * elements. Two main functions we will use from this environment are: processingOver(A mean to
+   * know if its the last round of processing) and getRootElements(It provides a list of elements
+   * that will get processed. Some of these elements will contain the annotation that we are
+   * interested.)
+   */
   @Override
-  public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
+  public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
     return false;
   }
 
