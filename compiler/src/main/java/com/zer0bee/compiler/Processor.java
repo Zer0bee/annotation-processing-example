@@ -1,6 +1,12 @@
 package com.zer0bee.compiler;
 
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.TypeSpec;
 import com.zer0bee.annotations.BindView;
+import com.zer0bee.compiler.utils.ProcessingUtils;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
@@ -9,8 +15,10 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
+import javax.tools.Diagnostic;
 
 public class Processor extends AbstractProcessor {
 
@@ -26,16 +34,48 @@ public class Processor extends AbstractProcessor {
   }
 
   /**
-   * @param annotations It provides a list of annotations as elements that are contained in the Java file
+   * @param annotations It provides a list of annotations as elements that are contained in the Java
+   * file
    * being processed.
-   * @param roundEnvironment It provides access to the processing environment with utils to querying
+   * @param roundEnv It provides access to the processing environment with utils to querying
    * elements. Two main functions we will use from this environment are: processingOver(A mean to
    * know if its the last round of processing) and getRootElements(It provides a list of elements
    * that will get processed. Some of these elements will contain the annotation that we are
    * interested.)
    */
   @Override
-  public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
+  public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    System.out.println("Custom processor started");
+    if (!roundEnv.processingOver()) {
+      // find all the classes that uses the supported annotations
+      Set<TypeElement> typeElements = ProcessingUtils.getTypeElementsToProcess(
+          roundEnv.getRootElements(),
+          annotations);
+      // for each such class create a wrapper class for binding
+      for (TypeElement typeElement : typeElements) {
+        String packageName = elementUtils.getPackageOf(typeElement).getQualifiedName().toString();
+        String typeName = typeElement.getSimpleName().toString();
+
+        ClassName className = ClassName.get(packageName, typeName);
+        ClassName generatedClassName = ClassName
+            .get(packageName, NameStore.getGeneratedClassName(typeName));
+
+        // define the wrapper class
+        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(generatedClassName)
+            .addModifiers(Modifier.PUBLIC);
+
+        // write the defines class to a java file
+        //It will generate the source code in the folder. /app/build/generated/source/apt/debug
+        try {
+          JavaFile.builder(packageName,
+              classBuilder.build())
+              .build()
+              .writeTo(filer);
+        } catch (IOException e) {
+          messager.printMessage(Diagnostic.Kind.ERROR, e.toString(), typeElement);
+        }
+      }
+    }
     return false;
   }
 
