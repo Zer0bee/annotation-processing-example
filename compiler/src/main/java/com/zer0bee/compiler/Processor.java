@@ -17,6 +17,8 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 
@@ -79,6 +81,19 @@ public class Processor extends AbstractProcessor {
             .addModifiers(Modifier.PRIVATE)
             .returns(void.class)
             .addParameter(className, NameStore.Variable.ANDROID_ACTIVITY);
+
+        for (VariableElement variableElement : ElementFilter.fieldsIn(
+            typeElement.getEnclosedElements())) {
+          BindView bindView = variableElement.getAnnotation(BindView.class);
+          if (bindView != null) {
+            bindViewsMethodBuilder.addStatement("$N.$N = ($T)$N.findViewById($L)",
+                NameStore.Variable.ANDROID_ACTIVITY,
+                variableElement.getSimpleName(),
+                variableElement,
+                NameStore.Variable.ANDROID_ACTIVITY,
+                bindView.value());
+          }
+        }
 
         classBuilder.addMethod(bindViewsMethodBuilder.build());
 
