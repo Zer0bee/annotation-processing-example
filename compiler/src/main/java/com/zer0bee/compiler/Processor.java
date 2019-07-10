@@ -64,6 +64,24 @@ public class Processor extends AbstractProcessor {
         TypeSpec.Builder classBuilder = TypeSpec.classBuilder(generatedClassName)
             .addModifiers(Modifier.PUBLIC);
 
+        // add constructor
+        classBuilder.addMethod(MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(className, NameStore.Variable.ANDROID_ACTIVITY)
+            .addStatement("$N($N)",
+                NameStore.Method.BIND_VIEWS,
+                NameStore.Variable.ANDROID_ACTIVITY)
+            .build());
+
+        // add method that maps the views with id
+        MethodSpec.Builder bindViewsMethodBuilder = MethodSpec
+            .methodBuilder(NameStore.Method.BIND_VIEWS)
+            .addModifiers(Modifier.PRIVATE)
+            .returns(void.class)
+            .addParameter(className, NameStore.Variable.ANDROID_ACTIVITY);
+
+        classBuilder.addMethod(bindViewsMethodBuilder.build());
+
         // write the defines class to a java file
         //It will generate the source code in the folder. /app/build/generated/source/apt/debug
         try {
